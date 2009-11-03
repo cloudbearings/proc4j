@@ -1,0 +1,78 @@
+<project name="DataAutomationServer" default="dist" basedir=".">
+    <condition property="build.mode" value="RELEASE">
+        <not>
+            <isset property="build.mode"/>
+        </not>
+    </condition>
+
+
+    <property name="native-src" location="src/c"/>
+    <property name="java-src" location="src/java"/>
+    <property name="test-src" location="src/test"/>
+    <property name="build-dir" location="build"/>
+    <property name="junit-reports" location="${build-dir}/junit-reports"/>
+    <property name="java-classes" location="${build-dir}/classes"/>
+    <property name="test-classes" location="${build-dir}/classes"/>
+    <condition property="native.build.script" value="native-build.sh">
+        <os family="unix"/>
+    </condition>
+
+    <condition property="native.build.script" value="native-build.bat">
+        <os family="windows"/>
+    </condition>
+
+    <path id="classes">
+        <path path="${java-classes}"/>
+        <path path="lib/*.jar"/>
+    </path>
+
+    <target name="clean">
+        <delete dir="${build-dir}"/>
+    </target>
+
+    <target name="native" depends="generate-headers">
+        <exec osfamily="unix" command="make" dir="${basedir}" failonerror="true">
+            <env key="PROC4J_BUILD_MODE" value="${build.mode}"/>
+        </exec>
+    </target>
+
+    <target name="compile-tests">
+        <mkdir dir="${build-dir}"/>
+        <mkdir dir="${test-classes}"/>
+        <javac classpathref="classes" srcdir="${test-src}" destdir="${test-classes}"/>
+    </target>
+    <target name="test" depends="compile-tests,native">
+        <delete dir="${junit-reports}" />
+        <mkdir dir="${junit-reports}" />
+        <junit fork="yes" haltonfailure="yes">
+            <sysproperty key="proc4j.native.path" value="${build-dir}" />
+            <classpath refid="classes"/>
+            <classpath location="${test-classes}"/>
+            <batchtest fork="yes" todir="${reports.tests}">
+                <fileset dir="${test-classes}">
+                    <include name="**/*Test.class"/>
+                </fileset>
+            </batchtest>
+            <formatter type="xml" usefile="true"/>
+            <formatter type="plain" usefile="true"/>
+        </junit>
+    </target>
+
+    <target name="dist" depends="clean,compile,native,test">
+
+    </target>
+
+    <target name="compile">
+        <mkdir dir="${build-dir}"/>
+        <mkdir dir="${java-classes}"/>
+        <javac srcdir="${java-src}" destdir="${java-classes}" source="1.5" target="1.5"/>
+    </target>
+
+    <target name="generate-headers" depends="compile">
+        <javah classpathref="classes" outputfile="${native-src}/java_api.h">
+            <class name="org.proc4j.ProcessesFunctions"/>
+        </javah>
+    </target>
+
+
+</project>
